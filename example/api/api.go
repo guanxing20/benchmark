@@ -3,9 +3,9 @@ package api
 import (
 	"context"
 
-	"github.com/base-org/framework/example/config"
-	"github.com/base-org/framework/example/driver"
-	"github.com/base-org/framework/example/metrics"
+	"github.com/base/framework/example/config"
+	"github.com/base/framework/example/driver"
+	"github.com/base/framework/example/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"

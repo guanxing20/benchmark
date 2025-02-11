@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/base-org/framework/example/config"
-	"github.com/base-org/framework/example/metrics"
-	"github.com/base-org/framework/service"
+	"github.com/base/framework/example/config"
+	"github.com/base/framework/example/metrics"
+	"github.com/base/framework/service"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 	"github.com/ethereum/go-ethereum/core/types"

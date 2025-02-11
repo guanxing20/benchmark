@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/base-org/framework/example/api"
-	"github.com/base-org/framework/example/config"
-	"github.com/base-org/framework/example/driver"
-	"github.com/base-org/framework/example/flags"
-	"github.com/base-org/framework/example/metrics"
-	"github.com/base-org/framework/service"
+	"github.com/base/framework/example/api"
+	"github.com/base/framework/example/config"
+	"github.com/base/framework/example/driver"
+	"github.com/base/framework/example/flags"
+	"github.com/base/framework/example/metrics"
+	"github.com/base/framework/service"
 	"github.com/urfave/cli/v2"
 
 	opservice "github.com/ethereum-optimism/optimism/op-service"

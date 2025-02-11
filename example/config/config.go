@@ -3,8 +3,8 @@ package config
 import (
 	"time"
 
-	"github.com/base-org/framework/example/flags"
-	"github.com/base-org/framework/service"
+	"github.com/base/framework/example/flags"
+	"github.com/base/framework/service"
 	"github.com/urfave/cli/v2"
 
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"

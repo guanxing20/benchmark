@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"github.com/base-org/framework/service"
+	"github.com/base/framework/service"
 	"github.com/prometheus/client_golang/prometheus"
 
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"

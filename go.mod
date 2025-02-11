@@ -1,4 +1,4 @@
-module github.com/base-org/framework
+module github.com/base/framework
 
 go 1.22.6
 
