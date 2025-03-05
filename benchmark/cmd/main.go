@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/base/framework/example/api"
-	"github.com/base/framework/example/config"
-	"github.com/base/framework/example/driver"
-	"github.com/base/framework/example/flags"
-	"github.com/base/framework/example/metrics"
-	"github.com/base/framework/service"
+	"github.com/base/base-bench/benchmark/config"
+	"github.com/base/base-bench/benchmark/flags"
+	"github.com/base/base-bench/service"
 	"github.com/urfave/cli/v2"
 
 	opservice "github.com/ethereum-optimism/optimism/op-service"
@@ -33,7 +30,7 @@ func main() {
 	app := cli.NewApp()
 	app.Flags = cliapp.ProtectFlags(flags.Flags)
 	app.Version = opservice.FormatVersion(Version, GitCommit, GitDate, "")
-	app.Name = "example"
+	app.Name = "base-bench"
 	app.Usage = "Example Service"
 	app.Description = "Example service that uses the Optimism Service Framework."
 	app.Action = cliapp.LifecycleCmd(Main(Version))
@@ -47,7 +44,7 @@ func main() {
 
 func Main(version string) cliapp.LifecycleAction {
 	return func(cliCtx *cli.Context, closeApp context.CancelCauseFunc) (cliapp.Lifecycle, error) {
-		cfg := config.NewConfig(cliCtx)
+		cfg := config.NewCLIConfig(cliCtx)
 		if err := cfg.Check(); err != nil {
 			return nil, fmt.Errorf("invalid CLI flags: %w", err)
 		}
@@ -57,18 +54,6 @@ func Main(version string) cliapp.LifecycleAction {
 		opservice.ValidateEnvVars(flags.EnvVarPrefix, flags.Flags, l)
 
 		s := service.NewService(version, cfg, l)
-
-		m := metrics.NewMetrics("")
-		s.WithMetrics(m)
-
-		d, err := driver.NewDriver(cfg, l, m)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create driver: %w", err)
-		}
-		s.WithDriver(d)
-
-		s.WithRPC(d.TxManager().API())
-		s.WithRPC(api.NewAPI(cfg, l, m, d))
 
 		return s, nil
 	}

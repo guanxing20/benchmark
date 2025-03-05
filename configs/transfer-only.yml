@@ -1,0 +1,10 @@
+- name: Test op-node Performance
+  description: Reth vs Geth Execution Speed
+  benchmark:
+    - op-program
+  variables:
+    - type: transaction_workload
+      values:
+        - tool:transfer-only
+        - tool:tx-fuzz
+        - file:mainnet-opcodes.gz

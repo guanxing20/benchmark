@@ -1,5 +1,4 @@
-# `framework`
+# `base-bench`
 
-Simple Golang framework for building backend services.
-Leans heavily on the design patterns in used in the
-[optimism](https://github.com/ethereum-optimism/optimism/) monorepo.
+This is a tool that allows you to run benchmarks on Ethereum execution clients and analyze
+performance impact as it relates to Optimism L2 networks.

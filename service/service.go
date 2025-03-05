@@ -2,17 +2,14 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"os"
 	"sync/atomic"
 
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
-	"github.com/ethereum-optimism/optimism/op-service/httputil"
-	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
-	"github.com/ethereum-optimism/optimism/op-service/oppprof"
-	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/go-yaml/yaml"
+	"github.com/pkg/errors"
 )
 
 var ErrAlreadyStopped = errors.New("already stopped")
@@ -20,24 +17,12 @@ var ErrAlreadyStopped = errors.New("already stopped")
 type Service interface {
 	cliapp.Lifecycle
 	Kill() error
-	WithDriver(driver Driver) Service
-	WithMetrics(metrics Metricer) Service
-	WithRPC(rpc rpc.API) Service
-	WithRPCs(rpcs []rpc.API) Service
 }
 
 type service struct {
 	config  Config
 	version string
 	log     log.Logger
-
-	driver  Driver
-	metrics Metricer
-	rpcs    []rpc.API
-
-	pprofService *oppprof.Service
-	metricsSrv   *httputil.HTTPServer
-	rpcServer    *oprpc.Server
 
 	stopped atomic.Bool
 }
@@ -50,111 +35,27 @@ func NewService(version string, cfg Config, log log.Logger) Service {
 	}
 }
 
-func (s *service) WithDriver(driver Driver) Service {
-	s.driver = driver
-	return s
-}
+func readBenchmarkConfig(path string) ([]BenchmarkConfig, error) {
+	file, err := os.OpenFile(path, os.O_RDONLY, 0)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to open file")
+	}
 
-func (s *service) WithMetrics(metrics Metricer) Service {
-	s.metrics = metrics
-	return s
-}
-
-func (s *service) WithRPC(rpc rpc.API) Service {
-	s.rpcs = append(s.rpcs, rpc)
-	return s
-}
-
-func (s *service) WithRPCs(rpcs []rpc.API) Service {
-	s.rpcs = append(s.rpcs, rpcs...)
-	return s
+	var config []BenchmarkConfig
+	err = yaml.NewDecoder(file).Decode(&config)
+	return config, err
 }
 
 func (s *service) Start(ctx context.Context) error {
 	s.log.Info("Starting")
 
-	if s.metrics != nil {
-		if err := s.initMetricsServer(); err != nil {
-			return fmt.Errorf("failed to start metrics service: %w", err)
-		}
-	}
-	if err := s.initPProf(); err != nil {
-		return fmt.Errorf("failed to init profiling: %w", err)
-	}
-	if len(s.rpcs) > 0 {
-		if err := s.initRPCServer(); err != nil {
-			return fmt.Errorf("failed to start RPC service: %w", err)
-		}
-	}
-
-	if s.driver != nil {
-		if err := s.driver.Start(ctx); err != nil {
-			return fmt.Errorf("failed to start driver: %w", err)
-		}
-	}
-
-	s.metrics.RecordInfo(s.version)
-	s.metrics.RecordUp()
-
-	return nil
-}
-
-func (s *service) initPProf() error {
-	c := s.config.PprofConfig()
-	s.pprofService = oppprof.New(
-		c.ListenEnabled,
-		c.ListenAddr,
-		c.ListenPort,
-		c.ProfileType,
-		c.ProfileDir,
-		c.ProfileFilename,
-	)
-
-	if err := s.pprofService.Start(); err != nil {
-		return fmt.Errorf("failed to start pprof service: %w", err)
-	}
-
-	return nil
-}
-
-func (s *service) initMetricsServer() error {
-	c := s.config.MetricsConfig()
-	if !c.Enabled {
-		s.log.Info("Metricer disabled")
-		return nil
-	}
-	s.log.Debug("Starting metrics service", "addr", c.ListenAddr, "port", c.ListenPort)
-	metricsSrv, err := opmetrics.StartServer(s.metrics.Registry(), c.ListenAddr, c.ListenPort)
+	config, err := readBenchmarkConfig(s.config.ConfigPath())
 	if err != nil {
-		return fmt.Errorf("failed to start metrics service: %w", err)
+		return errors.Wrap(err, "failed to read benchmark config")
 	}
-	s.log.Info("Started metrics service", "addr", metricsSrv.Addr())
-	s.metricsSrv = metricsSrv
-	return nil
-}
 
-func (s *service) initRPCServer() error {
-	c := s.config.RPCConfig()
-	server := oprpc.NewServer(
-		c.ListenAddr,
-		c.ListenPort,
-		s.version,
-		oprpc.WithLogger(s.log),
-	)
-	for _, r := range s.rpcs {
-		admin := r.Namespace == "admin"
-		if !admin || c.EnableAdmin {
-			if admin {
-				s.log.Info("Admin RPC enabled")
-			}
-			server.AddAPI(r)
-		}
-	}
-	s.log.Info("Starting JSON-RPC service")
-	if err := server.Start(); err != nil {
-		return fmt.Errorf("unable to start RPC service: %w", err)
-	}
-	s.rpcServer = server
+	fmt.Printf("Started %+#v\n", config)
+
 	return nil
 }
 
@@ -179,33 +80,11 @@ func (s *service) Stop(ctx context.Context) error {
 	}
 	s.log.Info("Service stopping")
 
-	var result error
-	if s.driver != nil {
-		if err := s.driver.Stop(ctx); err != nil {
-			result = errors.Join(result, fmt.Errorf("failed to stop driver: %w", err))
-		}
-	}
+	// var result error
 
-	if s.rpcServer != nil {
-		if err := s.rpcServer.Stop(); err != nil {
-			result = errors.Join(result, fmt.Errorf("failed to stop RPC service: %w", err))
-		}
-	}
-	if s.pprofService != nil {
-		if err := s.pprofService.Stop(ctx); err != nil {
-			result = errors.Join(result, fmt.Errorf("failed to stop PProf service: %w", err))
-		}
-	}
-
-	if s.metricsSrv != nil {
-		if err := s.metricsSrv.Stop(ctx); err != nil {
-			result = errors.Join(result, fmt.Errorf("failed to stop metrics service: %w", err))
-		}
-	}
-
-	if result == nil {
-		s.stopped.Store(true)
-		s.log.Info("Service stopped")
-	}
-	return result
+	// if result == nil {
+	// 	s.stopped.Store(true)
+	// 	s.log.Info("Service stopped")
+	// }
+	return nil
 }
