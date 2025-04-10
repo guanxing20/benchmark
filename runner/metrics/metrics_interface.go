@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -67,9 +68,10 @@ func NewFileMetricsWriter(baseDir string) *FileMetricsWriter {
 	}
 }
 
+const MetricsFileName = "metrics.json"
+
 func (w *FileMetricsWriter) Write(metrics []Metrics) error {
-	timestamp := time.Now().Format("20060102_150405")
-	filename := w.BaseDir + "/metrics_" + timestamp + ".json"
+	filename := path.Join(w.BaseDir, MetricsFileName)
 
 	data, err := json.MarshalIndent(metrics, "", "  ")
 
