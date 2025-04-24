@@ -36,7 +36,7 @@ export interface ChartConfig {
   title: string;
   description: string;
   type: "line";
-  unit?: "ns" | "us" | "ms" | "s" | "bytes" | "gas" | "count"; // Add 'us', add more units as needed
+  unit?: "ns" | "us" | "ms" | "s" | "bytes" | "gas" | "count" | "gas/s"; // Add 'gas/s', ensure 's' is present
 }
 
 export interface BenchmarkRun {
@@ -45,10 +45,24 @@ export interface BenchmarkRun {
   testDescription: string;
   outputDir: string;
   testConfig: Record<string, string | number>;
+  result: {
+    success: boolean;
+    sequencerMetrics?: {
+      gasPerSecond: number;
+      forkChoiceUpdated: number;
+      getPayload: number;
+      sendTxs?: number;
+    };
+    validatorMetrics?: {
+      gasPerSecond: number;
+      newPayload: number;
+    };
+  };
 }
 
 export interface BenchmarkRuns {
   runs: BenchmarkRun[];
+  createdAt: string;
 }
 
 export function getBenchmarkVariables(runs: BenchmarkRun[]) {
