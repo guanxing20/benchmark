@@ -18,6 +18,10 @@ function RunIndex() {
     Record<string, string | number>
   >({});
 
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Calculate filter options and filtered runs
   const { filterOptions, matchedRuns } = useMemo(() => {
     if (!benchmarkRuns) {
@@ -49,7 +53,7 @@ function RunIndex() {
       }
     });
 
-    const groups = groupBy(matchedRuns, "id");
+    const groups = groupBy(matchedRuns, "testConfig.GasLimit");
 
     // Build sections array with diffKeyStart
     const sections: {
@@ -129,18 +133,58 @@ function RunIndex() {
         </Link>
       </div>
       {/* Render all grouped sections */}
-      {groupedSections.map(
-        (section) => (
-          console.log(section),
-          (
-            <div key={section.key} className="mb-10">
-              <h2 className="text-lg font-semibold mb-2">{section.testName}</h2>
-              <p className="text-sm text-slate-500 mb-2">
-                {section.runs?.[0]?.testDescription}
-              </p>
+      {groupedSections.map((section) => {
+        const isExpanded = expandedSections.has(section.key);
+
+        // Compute pass/fail counts
+        const numPassed = section.runs.filter(
+          (run) => run.result?.success,
+        ).length;
+        const numFailed = section.runs.filter(
+          (run) => run.result && !run.result.success,
+        ).length;
+
+        return (
+          <div key={section.key} className="mb-10">
+            {/* Clickable heading */}
+            <button
+              className="flex items-center gap-4 text-lg font-semibold mb-2 focus:outline-none"
+              onClick={() => {
+                setExpandedSections((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(section.key)) {
+                    next.delete(section.key);
+                  } else {
+                    next.add(section.key);
+                  }
+                  return next;
+                });
+              }}
+            >
+              <span className="inline-block w-5 text-center">
+                {isExpanded ? "▼" : "►"}
+              </span>
+              <span>
+                {formatValue(
+                  Number(section.runs?.[0]?.testConfig?.GasLimit),
+                  "gas/s",
+                )}
+              </span>
+              {/* Pass/Fail summary */}
+              <span className="text-base font-normal text-slate-500">
+                <span className="text-green-600">{numPassed} Passed</span>
+                {" / "}
+                <span className="text-red-600">{numFailed} Failed</span>
+              </span>
+            </button>
+            {/* Only render table if expanded */}
+            {isExpanded && (
               <table className="min-w-full divide-y divide-slate-200 rounded-lg mb-8">
                 <thead>
                   <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Test Name
+                    </th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Config
                     </th>
@@ -170,6 +214,9 @@ function RunIndex() {
                 <tbody className="bg-white divide-y divide-slate-200 border-left border border-slate-200">
                   {section.runs.map((run) => (
                     <tr key={run.outputDir} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900 align-top">
+                        {run.testName}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900 align-top">
                         {(() => {
                           return (
@@ -249,10 +296,10 @@ function RunIndex() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          )
-        ),
-      )}
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
