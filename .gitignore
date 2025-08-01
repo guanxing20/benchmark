@@ -4,6 +4,7 @@
 data-dir/
 output/
 .vercel
+clients/build/
 
 contracts/cache/
 contracts/out/
